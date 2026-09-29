@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* .hljs{
+    border-radius: 20px !important;
+}
+
+.pre{
+    white-space: pre-wrap;
+
+} */
