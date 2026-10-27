@@ -11,7 +11,11 @@ import morgan from 'morgan'
 
 const app = express();
 app.use(morgan('dev'));
-app.use(express.json());-
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true
+}));
+app.use(express.json());
 app.use(cookieParse());
 app.use(helmet());
 app.use('/api', chatRoutes);
@@ -19,10 +23,9 @@ app.use('/api/auth', authRoutes);
 app.use(errorHandler);
 
 
-
 app.use(cors({
-  origin: process.env.CLIENT_URL, // e.g. 'http://localhost:5173' in dev, your real domain in prod
-  credentials: true // allows cookies (your refreshToken cookie!) to be sent cross-origin
+  origin: process.env.CLIENT_URL, 
+  credentials: true // allows cookies (refreshToken cookie) to be sent cross-origin
 }))
 
 app.listen(8080, () => {

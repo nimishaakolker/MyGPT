@@ -1,15 +1,19 @@
-import React, { useContext, useState, useEffect } from 'react'
+import React, { useContext, useState, useEffect, useRef } from 'react'
 import Chat from './Chat'
 import ChatInput from './ChatInput'
 import { MyContext } from './MyContext'
 import { ScaleLoader } from 'react-spinners'
 
 const Chatwindow = () => {
-  const { prompt, setPrompt, reply, setReply, currThreadId, prevChats, newChat, setNewChat, setPrevChats } = useContext(MyContext);
+  const { 
+    prompt, setPrompt, reply, setReply, currThreadId, prevChats, newChat, setNewChat, setPrevChats,
+    accessToken, setAccessToken   // <-- added
+  } = useContext(MyContext);
   const [loading, setLoading] = useState(false);
-  const [isOpen , setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
- useEffect(() => {
+
+  useEffect(() => {
     if (prompt && reply) {
       setPrevChats(prevChats => (
         [...prevChats, {
@@ -24,8 +28,6 @@ const Chatwindow = () => {
     }
   }, [reply]);
 
-
-
   const getReply = async () => {
     if (!prompt.trim()) return;
 
@@ -34,8 +36,10 @@ const Chatwindow = () => {
     const options = {
       method: 'POST',
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`   // <-- added
       },
+      credentials: 'include',   // <-- added
       body: JSON.stringify({
         message: prompt.trim(),
         threadId: currThreadId
@@ -61,25 +65,29 @@ const Chatwindow = () => {
   const toggleProfileMenu = () => {
     setIsOpen(!isOpen);
   }
- 
+
+  const handleLogout = async () => {   // <-- added, since your dropdown has a Logout item with no handler
+    await fetch('http://localhost:8080/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include'
+    })
+    setAccessToken(null)
+  }
 
   return (
     <div className='w-full h-screen m-2 p-2 bg-[#212121] flex flex-col items-center text-center'>
-
       <nav className='flex justify-end w-full items-center relative'>
         <span onClick={toggleProfileMenu}
-        className='bg-[#339cff] rounded-full cursor-pointer flex justify-center items-center w-7 h-7'>
+          className='bg-[#339cff] rounded-full cursor-pointer flex justify-center items-center w-7 h-7'>
           <i className='fa-solid fa-user'></i>
         </span>
 
-        { 
-          isOpen && <div className="flex flex-col bg-[#323232] p-2 rounded  absolute z-50 top-10   gap-2">
-            <div className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-gear'></i> Settings</div>
-            <div className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-cloud-arrow-up'></i> Upgrade Plan</div>
-            <div className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-arrow-right-from-bracket'></i> Logout</div>
-
-          </div>
-        }
+        {isOpen && <div className="flex flex-col bg-[#323232] p-2 rounded absolute z-50 top-10 gap-2">
+          <div className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-gear'></i> Settings</div>
+          <div className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-cloud-arrow-up'></i> Upgrade Plan</div>
+          <div onClick={handleLogout} className='flex gap-2 items-center hover:bg-neutral-100/5 rounded cursor-pointer'><i className='fa-solid fa-arrow-right-from-bracket'></i> Logout</div>
+        </div>}
       </nav>
 
       {newChat ? (
@@ -97,14 +105,12 @@ const Chatwindow = () => {
               </div>
             )}
           </div>
-
           <div className='flex w-full items-center flex-col'>
             <ChatInput getReply={getReply} loading={loading} />
             <p className='flex p-2 text-center text-xs'>Mygpt can make mistakes. Please double check responses.</p>
           </div>
         </>
       )}
-
     </div>
   )
 }

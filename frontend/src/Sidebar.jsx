@@ -3,12 +3,18 @@ import { MyContext } from './MyContext'
 import { v1 as uuidv1 } from 'uuid'
 
 const Sidebar = () => {
-  const { allThreads, setAllThreads, currThreadId, newChat, setNewChat, setReply, setPrevChats, setCurrThreadId, setPrompt } = useContext(MyContext);
-
+  const { 
+    allThreads, setAllThreads, currThreadId, newChat, setNewChat, 
+    setReply, setPrevChats, setCurrThreadId, setPrompt,
+    accessToken, setAccessToken   // <-- added
+  } = useContext(MyContext);
 
   const getAllThreads = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/thread');
+      const response = await fetch('http://localhost:8080/api/thread', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include'
+      });
       const res = await response.json();
       const filterdData = res.map(thread => ({ threadId: thread.threadId, title: thread.title }));
       setAllThreads(filterdData);
@@ -18,8 +24,8 @@ const Sidebar = () => {
   }
 
   useEffect(() => {
-    getAllThreads();
-  }, [currThreadId])
+    if (accessToken) getAllThreads();   // <-- guard: don't fetch before login
+  }, [currThreadId, accessToken])
 
   const createNewChat = () => {
     setNewChat(true);
@@ -29,11 +35,22 @@ const Sidebar = () => {
     setPrevChats([]);
   }
 
+  const handleLogout = async () => {
+    await fetch('http://localhost:8080/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include'
+    })
+    setAccessToken(null)
+  }
+
   const changeThread = async (newThreadId) => {
     setCurrThreadId(newThreadId);
-    
     try {
-      let response = await fetch(`http://localhost:8080/api/thread/${newThreadId}`);
+      let response = await fetch(`http://localhost:8080/api/thread/${newThreadId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include'
+      });
       const res = await response.json();
       setPrevChats(res);
       setNewChat(false);
@@ -44,21 +61,21 @@ const Sidebar = () => {
   }
 
   const deleteThread = async (threadId) => {
-   try {
-        const response = await fetch(`http://localhost:8080/api/thread/${threadId}`, {
-      method: 'DELETE'
-    });
-
-    const res = await response.json();
-    console.log(res);
-     setAllThreads(prev => prev.filter(thread => thread.threadId !== threadId));
- if(threadId === currThreadId){
-  createNewChat();
- }
-   } catch (error) {
-    console.log(error);
-   }
-
+    try {
+      const response = await fetch(`http://localhost:8080/api/thread/${threadId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include'
+      });
+      const res = await response.json();
+      console.log(res);
+      setAllThreads(prev => prev.filter(thread => thread.threadId !== threadId));
+      if (threadId === currThreadId) {
+        createNewChat();
+      }
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   return (
@@ -75,16 +92,13 @@ const Sidebar = () => {
 
       <div className='flex-1'>
         <h4 className='p-3 font-semibold'>Chats</h4>
-
         <div className='text-[#b4b4b4]'>
           {allThreads?.map((thread, idx) => (
-            <div
-              key={idx}
-              className='group flex flex-row items-center gap-2 cursor-pointer hover:bg-neutral-400/5 '>
+            <div key={idx} className='group flex flex-row items-center gap-2 cursor-pointer hover:bg-neutral-400/5 '>
               <p onClick={() => changeThread(thread.threadId)}
                 className='overflow-hidden whitespace-nowrap flex-1 p-1'>{thread.title}</p>
               <span onClick={() => deleteThread(thread.threadId)}
-              className='items-center justify-center opacity-0 group-hover:opacity-100 text-[#ffffff] hover:text-red-600'>
+                className='items-center justify-center opacity-0 group-hover:opacity-100 text-[#ffffff] hover:text-red-600'>
                 <i className='fa fa-trash'></i>
               </span>
             </div>
@@ -93,6 +107,7 @@ const Sidebar = () => {
       </div>
 
       <div>
+        <button onClick={handleLogout}>Logout</button>
         <div className='w-full bg-white/25 h-0.5'></div>
         <p className='p-2.5'>By Nimisha &hearts;</p>
       </div>
